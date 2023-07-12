@@ -4,6 +4,7 @@
 static const float PI = 3.1415926;
 
 RWTexture2D<float4> H0;
+
 RWTexture2D<float4> WavesData;
 RWTexture2D<float2> H0K;
 
@@ -19,7 +20,7 @@ struct SpectrumParameters
 {
 	float scale;
 	float angle;
-	float spewadBlend;
+	float spreadBlend;
 	float swell;
 	float alpha;
 	float peakOmega;
@@ -64,6 +65,18 @@ float DonelanBannerBeta(float x)
 
 float DonelanBanner(float theta,float omega,float peakOmega) 
 {
+	float beta = DonelanBannerBeta(omega / peakOmega);
+	float sech = 1 / cosh(beta * theta);
+	return beta / 2 / tanh(beta * 3.1416) * sech * sech;
+}
+
+float Cosine2s(float theta,float s) 
+{
+	return NormalisationFactor(s) * pow(abs(cos(0.5 * theta)), 2 * s);
+}
+
+float SpreadPower(float omega,float peakOmega) 
+{
 	if (omega > peakOmega) 
 	{
 		return 9.77 * pow(abs(omega / peakOmega), -2.5);
@@ -76,8 +89,8 @@ float DonelanBanner(float theta,float omega,float peakOmega)
 
 float DirectionSpectrum(float theta,float omega,SpectrumParameters pars) 
 {
-	float s = SpreasPower(omega, pars.peakOmega)
-		+ 16 * tanh(min(omega / pars.peakOmega, 20)) * pars.swell * pars.sweel;
+	float s = SpreadPower(omega, pars.peakOmega)
+		+ 16 * tanh(min(omega / pars.peakOmega, 20)) * pars.swell * pars.swell;
 	return lerp(2 / 3.1415926 * cos(theta) * cos(theta), Cosine2s(theta - pars.angle, s), pars.spreadBlend);
 }
 
@@ -109,8 +122,13 @@ float JONSWAP(float omega,float g,float depth,SpectrumParameters pars)
 		* pow(abs(pars.gamma), r);
 }
 
-[(numthreads(8,8,1)]
-void CalculateInitialSpectrum(uint3 id:SV_DispatchThreadID) 
+float ShortWavesFade(float kLength,SpectrumParameters pars) 
+{
+	return exp(-pars.shortWavesFade * pars.shortWavesFade * kLength * kLength);
+}
+
+[numthreads(8,8,1)]
+void CalculateInitialSpectrum(uint3 id : SV_DispatchThreadID) 
 {
 	float deltaK = 2 * PI / LengthScale;
 	int nx = id.x - Size / 2;
@@ -124,7 +142,7 @@ void CalculateInitialSpectrum(uint3 id:SV_DispatchThreadID)
 		float omega = Frequency(kLength, GravityAcceleration, Depth);
 
 		WavesData[id.xy] = float4(k.x, 1 / kLength, k.y, omega);
-		float dOmegadk = FrequencyDerivativative(kLength, GravityAccleration, Depth);
+		float dOmegadk = FrequencyDerivatie(kLength, GravityAcceleration, Depth);
 
 		float spectrum = JONSWAP(omega, GravityAcceleration, Depth, Spectrums[0])
 			* DirectionSpectrum(kAngle, omega, Spectrum[0]) * ShortWavesFade(kLength, Spectrums[0]);
@@ -140,4 +158,12 @@ void CalculateInitialSpectrum(uint3 id:SV_DispatchThreadID)
 		H0K[id.xy] = 0;
 		WavesData[id.xy] = float4(k.x, 1.k.y, 0);
 	}
+}
+
+[numthreads(8,8,1)]
+void CalculateConjugatedSpctrum() 
+{
+	float2 h0K = H0K[id.xy];
+	float2 h0MinusK = H0K[uint((Size - id.x) % Size, (Size - id.y) % Size)];
+	H0[id.xy] = float4(h0K.x, h0K.y, h0MinusK.x, -h0MinusK.y);
 }
