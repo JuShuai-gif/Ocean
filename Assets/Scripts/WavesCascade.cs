@@ -143,7 +143,7 @@ public class WavesCascade
     const int LOCAL_WORK_GROUPS_Y = 8;
 
     // Kernel IDs:
-    int KERNEL_INITIAL_SPECTRUM;
+    public int KERNEL_INITIAL_SPECTRUM;
     int KERNEL_CONJUGATE_SPECTRUM;
     int KERNEL_TIME_DEPENDENT_SPECTRUMS;
     int KERNEL_RESULT_TEXTURES;

@@ -46,6 +46,8 @@ public class WavesGenerator : MonoBehaviour
         cascade1 = new WavesCascade(size, initialSpectrumShader, timeDependentSpectrumShader, texturesMergerShader, fft, gaussianNoise);
         cascade2 = new WavesCascade(size, initialSpectrumShader, timeDependentSpectrumShader, texturesMergerShader, fft, gaussianNoise);
 
+        Debug.Log(cascade0.KERNEL_INITIAL_SPECTRUM);
+
         InitialiseCascades();
 
         physicsReadback = new Texture2D(size, size, TextureFormat.RGBAFloat, false);
